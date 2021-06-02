@@ -1,0 +1,11 @@
+.DS_Store
+go.mod
+go.sum
+main.zip
+main
+source.me
+workspace.*
+.terraform.*
+.terraform
+terraform.tfstate*
+*.tfvars
