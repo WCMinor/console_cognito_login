@@ -7,5 +7,6 @@ source.me
 workspace.*
 .terraform.*
 .terraform
+plan.out
 terraform.tfstate*
 *.tfvars
