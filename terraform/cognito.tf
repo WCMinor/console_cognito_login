@@ -1,5 +1,20 @@
 resource "aws_cognito_user_pool" "pool" {
   name = "${var.user_pool_name}-pool"
+  lambda_config {
+    pre_token_generation = aws_lambda_function.pre_token_generation.arn
+  }
+  schema {
+    attribute_data_type      = "String"
+    developer_only_attribute = false
+    mutable                  = true
+    name                     = "groups"
+    required                 = false
+
+    string_attribute_constraints {
+      max_length = "256"
+      min_length = "1"
+    }
+  }
 }
 
 resource "aws_cognito_user_pool_domain" "main" {
@@ -8,12 +23,14 @@ resource "aws_cognito_user_pool_domain" "main" {
 }
 
 resource "aws_cognito_user_pool_client" "client" {
-  name                         = "${var.user_pool_name}-client"
-  callback_urls                = ["${aws_apigatewayv2_api.get_console.api_endpoint}/console"]
-  default_redirect_uri         = "${aws_apigatewayv2_api.get_console.api_endpoint}/console"
-  user_pool_id                 = aws_cognito_user_pool.pool.id
-  generate_secret              = true
-  supported_identity_providers = ["COGNITO"]
+  name            = "${var.user_pool_name}-client"
+  callback_urls   = ["${aws_apigatewayv2_api.get_console.api_endpoint}/console"]
+  user_pool_id    = aws_cognito_user_pool.pool.id
+  generate_secret = true
+  supported_identity_providers = [
+    "COGNITO",
+    "AzureAD"
+  ]
   explicit_auth_flows = [
     "ALLOW_CUSTOM_AUTH",
     "ALLOW_REFRESH_TOKEN_AUTH",

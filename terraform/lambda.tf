@@ -71,3 +71,19 @@ resource "aws_lambda_permission" "apigw" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.get_console.execution_arn}/*/*"
 }
+
+resource "aws_lambda_function" "pre_token_generation" {
+  filename         = "include/lambdas/preToken/preToken.zip"
+  function_name    = "${var.user_pool_name}-preToken"
+  role             = aws_iam_role.iam_for_lambda.arn
+  handler          = "preToken.lambda_handler"
+  source_code_hash = filebase64sha256("include/lambdas/preToken/preToken.zip")
+  runtime          = "python3.8"
+}
+
+resource "aws_lambda_permission" "cognito" {
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.pre_token_generation.arn
+  principal     = "cognito-idp.amazonaws.com"
+  source_arn    = aws_cognito_user_pool.pool.arn
+}
