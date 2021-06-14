@@ -7,7 +7,16 @@ variable "student_role_allowed_groups" {
   type    = list(any)
   default = []
 }
+
 variable "admin_role_allowed_groups" {
   type    = list(any)
   default = []
+}
+
+variable "AzureADMetadataURL" {
+  type = string
+}
+
+variable "AzureRedirectBindingURI" {
+  type = string
 }

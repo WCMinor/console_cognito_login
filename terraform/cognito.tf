@@ -92,3 +92,24 @@ resource "aws_cognito_identity_pool_roles_attachment" "main" {
     }
   }
 }
+
+
+resource "aws_cognito_identity_provider" "azure_ad" {
+  user_pool_id  = aws_cognito_user_pool.pool.id
+  provider_name = "AzureAD"
+  provider_type = "SAML"
+
+  provider_details = {
+    IDPSignout            = "false"
+    MetadataURL           = var.AzureADMetadataURL
+    SLORedirectBindingURI = var.AzureRedirectBindingURI
+    SSORedirectBindingURI = var.AzureRedirectBindingURI
+  }
+
+  attribute_mapping = {
+    "custom:groups" = "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups"
+    email           = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
+    given_name      = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"
+    name            = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+  }
+}
