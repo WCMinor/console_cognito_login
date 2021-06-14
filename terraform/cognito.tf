@@ -2,6 +2,7 @@ resource "aws_cognito_user_pool" "pool" {
   name = "${var.user_pool_name}-pool"
   lambda_config {
     pre_token_generation = aws_lambda_function.pre_token_generation.arn
+    post_authentication  = aws_lambda_function.post_authentication.arn
   }
   schema {
     attribute_data_type      = "String"

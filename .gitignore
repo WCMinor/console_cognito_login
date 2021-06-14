@@ -11,3 +11,4 @@ plan.out
 terraform.tfstate*
 *.tfvars
 preToken.zip
+postAuth.zip

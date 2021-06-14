@@ -45,12 +45,39 @@ resource "aws_iam_role_policy_attachment" "lambda_logs" {
   policy_arn = aws_iam_policy.lambda_logging.arn
 }
 
+data "archive_file" "get_credentials_checksum" {
+  type        = "zip"
+  source_dir  = "include/lambdas/getCredentials"
+  excludes    = ["main", "main.zip"]
+  output_path = "/tmp/get_credentials_dir.zip"
+}
+
+resource "null_resource" "build_get_credentials" {
+  triggers = {
+    get_credentials_hash = "${data.archive_file.get_credentials_checksum.output_sha}"
+  }
+
+  provisioner "local-exec" {
+    command = "docker run -e GOOS=linux -e GOARCH=amd64 -v ${abspath(path.module)}/include/lambdas/getCredentials:/app -w /app golang:1.16 go build -ldflags=\"-s -w\" -o main"
+  }
+}
+
+data "archive_file" "get_credentials_zip" {
+  depends_on = [
+    null_resource.build_get_credentials
+  ]
+  type        = "zip"
+  source_file = "include/lambdas/getCredentials/main"
+  output_path = "include/lambdas/getCredentials/main.zip"
+}
+
+
 resource "aws_lambda_function" "get_credentials" {
   filename         = "include/lambdas/getCredentials/main.zip"
   function_name    = "${var.user_pool_name}-getCredentials"
   role             = aws_iam_role.iam_for_lambda.arn
   handler          = "main"
-  source_code_hash = filebase64sha256("include/lambdas/getCredentials/main.zip")
+  source_code_hash = data.archive_file.get_credentials_zip.output_base64sha256
   runtime          = "go1.x"
 
   environment {
@@ -72,18 +99,47 @@ resource "aws_lambda_permission" "apigw" {
   source_arn    = "${aws_apigatewayv2_api.get_console.execution_arn}/*/*"
 }
 
+data "archive_file" "preToken" {
+  type        = "zip"
+  source_file = "include/lambdas/preToken/preToken.py"
+  output_path = "include/lambdas/preToken/preToken.zip"
+}
+
+
 resource "aws_lambda_function" "pre_token_generation" {
   filename         = "include/lambdas/preToken/preToken.zip"
   function_name    = "${var.user_pool_name}-preToken"
   role             = aws_iam_role.iam_for_lambda.arn
   handler          = "preToken.lambda_handler"
-  source_code_hash = filebase64sha256("include/lambdas/preToken/preToken.zip")
+  source_code_hash = data.archive_file.preToken.output_base64sha256
   runtime          = "python3.8"
 }
 
-resource "aws_lambda_permission" "cognito" {
+resource "aws_lambda_permission" "pre_token_generation" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.pre_token_generation.arn
+  principal     = "cognito-idp.amazonaws.com"
+  source_arn    = aws_cognito_user_pool.pool.arn
+}
+
+data "archive_file" "postAuth" {
+  type        = "zip"
+  source_file = "include/lambdas/postAuth/postAuth.py"
+  output_path = "include/lambdas/postAuth/postAuth.zip"
+}
+
+resource "aws_lambda_function" "post_authentication" {
+  filename         = "include/lambdas/postAuth/postAuth.zip"
+  function_name    = "${var.user_pool_name}-postAuth"
+  role             = aws_iam_role.iam_for_lambda.arn
+  handler          = "postAuth.lambda_handler"
+  source_code_hash = data.archive_file.postAuth.output_base64sha256
+  runtime          = "python3.8"
+}
+
+resource "aws_lambda_permission" "post_authentication" {
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.post_authentication.arn
   principal     = "cognito-idp.amazonaws.com"
   source_arn    = aws_cognito_user_pool.pool.arn
 }
